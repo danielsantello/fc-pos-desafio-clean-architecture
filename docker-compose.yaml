@@ -1,0 +1,76 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: orders
+      MYSQL_USER: orders
+      MYSQL_PASSWORD: orders
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'MYSQL_PWD="$${MYSQL_PASSWORD}" mysql --protocol=TCP -h 127.0.0.1 -u "$${MYSQL_USER}" "$${MYSQL_DATABASE}" -e "SELECT 1"'
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  migrate:
+    image: migrate/migrate:v4.19.0
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database=mysql://orders:orders@tcp(mysql:3306)/orders
+      - up
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:4.4.0-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: labs
+      RABBITMQ_DEFAULT_PASS: labs
+    ports:
+      - "127.0.0.1:15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  app:
+    build: .
+    environment:
+      DB_DRIVER: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: orders
+      DB_PASSWORD: orders
+      DB_NAME: orders
+      WEB_SERVER_PORT: ":8000"
+      GRPC_SERVER_PORT: "50051"
+      GRAPHQL_SERVER_PORT: "8080"
+      RABBITMQ_URL: "amqp://labs:labs@rabbitmq:5672/"
+    ports:
+      - "8000:8000"
+      - "50051:50051"
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  rabbitmq_data:

@@ -1,0 +1,24 @@
+@rest = http://localhost:8000
+@graphql = http://localhost:8080
+
+### Criar uma order
+POST {{rest}}/order
+Content-Type: application/json
+
+{
+  "id": "order-2",
+  "price": 200,
+  "tax": 10
+}
+
+### Listar orders via REST
+GET {{rest}}/order
+Accept: application/json
+
+### Listar orders via GraphQL
+POST {{graphql}}/query
+Content-Type: application/json
+
+{
+  "query": "query { ListOrders { id Price Tax FinalPrice } }"
+}

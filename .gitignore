@@ -1,0 +1,9 @@
+.docker/
+.env
+.env.*
+!.env.example
+*:Zone.Identifier
+bin/
+*.exe
+*.test
+*.out
